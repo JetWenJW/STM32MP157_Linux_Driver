@@ -1,0 +1,1 @@
+cmd_/home/Jet/STM32MP157/Linux_Driver/22_spi/icm20608.ko := /home/Jet/gcc_toolchain/gcc_toolchain7.5.0/bin/arm-linux-gnueabihf-ld -r -EL --build-id  -T ./scripts/module-common.lds -T ./arch/arm/kernel/module.lds -o /home/Jet/STM32MP157/Linux_Driver/22_spi/icm20608.ko /home/Jet/STM32MP157/Linux_Driver/22_spi/icm20608.o /home/Jet/STM32MP157/Linux_Driver/22_spi/icm20608.mod.o;  true

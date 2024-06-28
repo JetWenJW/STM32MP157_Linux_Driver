@@ -1,0 +1,1 @@
+cmd_/home/Jet/STM32MP157/Linux_Driver/35_dht11/dht11.ko := /home/Jet/gcc_toolchain/gcc_toolchain7.5.0/bin/arm-linux-gnueabihf-ld -r -EL --build-id  -T ./scripts/module-common.lds -T ./arch/arm/kernel/module.lds -o /home/Jet/STM32MP157/Linux_Driver/35_dht11/dht11.ko /home/Jet/STM32MP157/Linux_Driver/35_dht11/dht11.o /home/Jet/STM32MP157/Linux_Driver/35_dht11/dht11.mod.o;  true

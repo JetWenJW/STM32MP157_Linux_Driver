@@ -1,0 +1,1 @@
+cmd_/home/Jet/STM32MP157/Linux_Driver/26_ramdisk_withrequest/ramdisk.mod := { echo  /home/Jet/STM32MP157/Linux_Driver/26_ramdisk_withrequest/ramdisk.o; echo; } > /home/Jet/STM32MP157/Linux_Driver/26_ramdisk_withrequest/ramdisk.mod
