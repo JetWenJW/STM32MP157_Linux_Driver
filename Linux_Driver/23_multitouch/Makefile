@@ -1,4 +1,4 @@
-KERNELDIR := /home/Jet/STM32MP157/Porting/LinuxKernel
+KERNELDIR := /home/Jet/STM32MP157_All_Of_The_Porting/Porting/LinuxKernel
 CURRENT_PATH := $(shell pwd)
 
 obj-m := ft5x06.o gt9147.o

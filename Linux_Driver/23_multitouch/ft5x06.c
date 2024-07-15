@@ -5,18 +5,18 @@
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 
-/* FT5426寄存器相关宏定义 */
-#define FT5426_DEVIDE_MODE_REG	0x00	// 模式寄存器
-#define FT5426_TD_STATUS_REG    	0x02  	// 状态寄存器
-#define FT5426_TOUCH_DATA_REG   	0x03   	// 触摸数据读取的起始寄存器
-#define FT5426_ID_G_MODE_REG    	0xA4  	// 中断模式寄存器
+/* FT5426 register definitions */
+#define FT5426_DEVIDE_MODE_REG   0x00    // Mode register
+#define FT5426_TD_STATUS_REG     0x02    // Status register
+#define FT5426_TOUCH_DATA_REG    0x03    // Starting register for touch data
+#define FT5426_ID_G_MODE_REG     0xA4    // Interrupt mode register
 
-#define MAX_SUPPORT_POINTS		5    	// ft5426最大支持5点触摸
+#define MAX_SUPPORT_POINTS       5       // FT5426 supports a maximum of 5 touch points
 
-#define TOUCH_EVENT_DOWN      	0x00    // 按下
-#define TOUCH_EVENT_UP           	0x01    // 抬起
-#define TOUCH_EVENT_ON         	0x02    // 接触
-#define TOUCH_EVENT_RESERVED  	0x03    // 保留
+#define TOUCH_EVENT_DOWN         0x00    // Touch down
+#define TOUCH_EVENT_UP           0x01    // Touch up
+#define TOUCH_EVENT_ON           0x02    // Touch contact
+#define TOUCH_EVENT_RESERVED     0x03    // Reserved
 
 
 struct edt_ft5426_dev {
@@ -37,7 +37,7 @@ static int edt_ft5426_ts_write(struct edt_ft5426_dev *ft5426,
     send_buf[0] = addr;
     memcpy(&send_buf[1], buf, len);
 
-    msg.flags = 0;                  //i2c写
+    msg.flags = 0;                  // i2c write
     msg.addr = client->addr;
     msg.buf = send_buf;
     msg.len = len + 1;
@@ -59,12 +59,12 @@ static int edt_ft5426_ts_read(struct edt_ft5426_dev *ft5426,
     struct i2c_msg msg[2];
     int ret;
 
-    msg[0].flags = 0;             	// i2c写
+    msg[0].flags = 0;               // i2c write
     msg[0].addr = client->addr;
     msg[0].buf = &addr;
-    msg[0].len = 1;              	// 1个字节
+    msg[0].len = 1;                 // 1 byte
 
-    msg[1].flags = I2C_M_RD;    	//i2c读
+    msg[1].flags = I2C_M_RD;        // i2c read
     msg[1].addr = client->addr;
     msg[1].buf = buf;
     msg[1].len = len;
@@ -84,23 +84,23 @@ static int edt_ft5426_ts_reset(struct edt_ft5426_dev *ft5426)
     struct i2c_client *client = ft5426->client;
     int ret;
 
-    /* 从设备树中获取复位管脚 */
+    /* Get reset GPIO from device tree */
     ft5426->reset_gpio = of_get_named_gpio(client->dev.of_node, "reset-gpios", 0);
     if (!gpio_is_valid(ft5426->reset_gpio)) {
         dev_err(&client->dev, "Failed to get ts reset gpio\n");
         return ft5426->reset_gpio;
     }
 
-    /* 申请使用管脚 */
+    /* Request GPIO */
     ret = devm_gpio_request_one(&client->dev, ft5426->reset_gpio,
                 GPIOF_OUT_INIT_HIGH, "ft5426 reset");
     if (ret < 0)
         return ret;
 
     msleep(20);
-    gpio_set_value_cansleep(ft5426->reset_gpio, 0);    	// 拉低复位引脚
+    gpio_set_value_cansleep(ft5426->reset_gpio, 0);     // Pull reset GPIO low
     msleep(5);
-    gpio_set_value_cansleep(ft5426->reset_gpio, 1);   	// 拉高复位引脚，结束复位
+    gpio_set_value_cansleep(ft5426->reset_gpio, 1);     // Pull reset GPIO high, end reset
 
     return 0;
 }
@@ -113,7 +113,7 @@ static irqreturn_t edt_ft5426_ts_isr(int irq, void *dev_id)
     bool down;
     int ret;
 
-    /* 读取FT5426触摸点坐标从0x02寄存器开始，连续读取29个寄存器 */
+    /* Read FT5426 touch coordinates starting from 0x02 register, read 29 registers continuously */
     ret = edt_ft5426_ts_read(ft5426, FT5426_TD_STATUS_REG, rdbuf, 29);
     if (ret)
         goto out;
@@ -122,22 +122,22 @@ static irqreturn_t edt_ft5426_ts_isr(int irq, void *dev_id)
 
         u8 *buf = &rdbuf[i * 6 + 1];
 
-        /* 以第一个触摸点为例，寄存器TOUCH1_XH(地址0x03)，各bit位描述如下：
-         * bit7:6  Event flag  0:按下 1:释放 2:接触 3:没有事件
-         * bit5:4  保留
-         * bit3:0  X轴触摸点的11~8位
+        /* For the first touch point, register TOUCH1_XH (address 0x03), bit description:
+         * bit7:6  Event flag  0:press 1:release 2:contact 3:no event
+         * bit5:4  Reserved
+         * bit3:0  X-axis touch point 11~8 bits
          */
-        type = buf[0] >> 6;                     // 获取触摸点的Event Flag
+        type = buf[0] >> 6;                     // Get touch point Event Flag
         if (type == TOUCH_EVENT_RESERVED)
             continue;
 
-        /* 我们所使用的触摸屏和FT5426是反过来的 */
+        /* The touchscreen we use is reversed with FT5426 */
         x = ((buf[2] << 8) | buf[3]) & 0x0fff;
         y = ((buf[0] << 8) | buf[1]) & 0x0fff;
 
-        /* 以第一个触摸点为例，寄存器TOUCH1_YH(地址0x05)，各bit位描述如下：
-         * bit7:4  Touch ID  触摸ID，表示是哪个触摸点
-         * bit3:0  Y轴触摸点的11~8位。
+        /* For the first touch point, register TOUCH1_YH (address 0x05), bit description:
+         * bit7:4  Touch ID  Indicates which touch point it is
+         * bit3:0  Y-axis touch point 11~8 bits.
          */
         id = (buf[2] >> 4) & 0x0f;
         down = type != TOUCH_EVENT_UP;
@@ -164,20 +164,20 @@ static int edt_ft5426_ts_irq(struct edt_ft5426_dev *ft5426)
     struct i2c_client *client = ft5426->client;
     int ret;
 
-    /* 从设备树中获取中断管脚 */
+    /* Get interrupt GPIO from device tree */
     ft5426->irq_gpio = of_get_named_gpio(client->dev.of_node, "irq-gpios", 0);
     if (!gpio_is_valid(ft5426->irq_gpio)) {
         dev_err(&client->dev, "Failed to get ts interrupt gpio\n");
         return ft5426->irq_gpio;
     }
 
-    /* 申请使用管脚 */
+    /* Request GPIO */
     ret = devm_gpio_request_one(&client->dev, ft5426->irq_gpio,
                 GPIOF_IN, "ft5426 interrupt");
     if (ret < 0)
         return ret;
 
-    /* 注册中断服务函数 */
+    /* Register interrupt service function */
     ret = devm_request_threaded_irq(&client->dev, gpio_to_irq(ft5426->irq_gpio),
                 NULL, edt_ft5426_ts_isr, IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
                 client->name, ft5426);
@@ -197,7 +197,7 @@ static int edt_ft5426_ts_probe(struct i2c_client *client,
     u8 data;
     int ret;
 
-    /* 实例化一个struct edt_ft5426_dev对象 */
+    /* Instantiate a struct edt_ft5426_dev object */
     ft5426 = devm_kzalloc(&client->dev, sizeof(struct edt_ft5426_dev), GFP_KERNEL);
     if (!ft5426) {
         dev_err(&client->dev, "Failed to allocate ft5426 driver data.\n");
@@ -206,25 +206,25 @@ static int edt_ft5426_ts_probe(struct i2c_client *client,
 
     ft5426->client = client;
 
-    /* 复位FT5426触摸芯片 */
+    /* Reset FT5426 touch chip */
     ret = edt_ft5426_ts_reset(ft5426);
     if (ret)
         return ret;
 
     msleep(5);
 
-    /* 初始化FT5426 */
+    /* Initialize FT5426 */
     data = 0;
     edt_ft5426_ts_write(ft5426, FT5426_DEVIDE_MODE_REG, &data, 1);
     data = 1;
     edt_ft5426_ts_write(ft5426, FT5426_ID_G_MODE_REG, &data, 1);
 
-    /* 申请、注册中断服务函数 */
+    /* Request, register interrupt service function */
     ret = edt_ft5426_ts_irq(ft5426);
     if (ret)
         return ret;
 
-    /* 注册input设备 */
+    /* Register input device */
     input = devm_input_allocate_device(&client->dev);
     if (!input) {
         dev_err(&client->dev, "Failed to allocate input device.\n");
@@ -269,9 +269,9 @@ MODULE_DEVICE_TABLE(of, edt_ft5426_of_match);
 
 static struct i2c_driver edt_ft5426_ts_driver = {
     .driver = {
-        .owner     		= THIS_MODULE,
-        .name          	= "edt_ft5426",
-        .of_match_table	= of_match_ptr(edt_ft5426_of_match),
+        .owner              = THIS_MODULE,
+        .name               = "edt_ft5426",
+        .of_match_table     = of_match_ptr(edt_ft5426_of_match),
     },
     .probe    = edt_ft5426_ts_probe,
     .remove   = edt_ft5426_ts_remove,
